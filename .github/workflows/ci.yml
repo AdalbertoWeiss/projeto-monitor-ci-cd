@@ -25,32 +25,34 @@ jobs:
           node-version: "20"
 
       - name: Install deps
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        # CORREÇÃO: Traduzido para PowerShell
+        shell: pwsh
         run: |
-          if [ -f package-lock.json ]; then
+          if (Test-Path package-lock.json) {
             npm ci
-          else
+          } else {
             npm install
-          fi
+          }
 
       - name: Run tests (se tiver)
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        # CORREÇÃO: Traduzido para PowerShell
+        shell: pwsh
         run: |
-          if npm run | grep -q " test"; then
+          $npmScripts = npm run
+          if ($npmScripts -match "\stest\s") {
             npm test
-          else
-            echo "Sem script de teste. Pulando etapa."
-          fi
+          } else {
+            Write-Host "Sem script de teste. Pulando etapa."
+          }
 
       - name: Set image tags
         id: vars
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        # CORREÇÃO: Traduzido para PowerShell
+        shell: pwsh
         run: |
-          echo "IMAGE=adalbertooo/monitor" >> $GITHUB_OUTPUT
-          echo "TAG_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          $TAG_SHA = $env:GITHUB_SHA.Substring(0, 7)
+          echo "IMAGE=adalbertooo/monitor" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "TAG_SHA=$TAG_SHA" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
@@ -68,7 +70,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./dockerfile
+          file: ./Dockerfile
           push: true
           tags: |
             ${{ steps.vars.outputs.IMAGE }}:latest
