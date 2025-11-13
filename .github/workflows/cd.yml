@@ -11,6 +11,7 @@ permissions:
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # CORREÇÃO: Mudamos de 'ubuntu-latest' para 'self-hosted'
     runs-on: self-hosted
     
     steps:
@@ -19,6 +20,8 @@ jobs:
 
       - name: Set vars
         id: vars
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           echo "IMAGE=adalbertooo/monitor" >> $GITHUB_OUTPUT
           echo "TAG_SHA=${{ github.event.workflow_run.head_sha || github.sha }}::7" >> $GITHUB_OUTPUT
@@ -30,16 +33,22 @@ jobs:
           version: 'latest'
 
       - name: Configure kubeconfig
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > $HOME/.kube/config
 
       - name: Create namespace if not exists
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} || \
           kubectl create ns ${{ steps.vars.outputs.NAMESPACE }}
 
       - name: Apply base manifests (Service, Prometheus, Grafana, Nginx)
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml || true
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml || true
@@ -49,13 +58,19 @@ jobs:
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml || true
 
       - name: Apply app deployment (first time)
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
 
       - name: Set image to new tag
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           kubectl set image deployment/monitor monitor=${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_SHA }} -n ${{ steps.vars.outputs.NAMESPACE }}
 
       - name: Wait rollout
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           kubectl rollout status deployment/monitor -n ${{ steps.vars.outputs.NAMESPACE }} --timeout=120s

@@ -13,7 +13,9 @@ permissions:
 
 jobs:
   ci:
+    # CORREÇÃO: Mudamos de 'ubuntu-latest' para 'self-hosted'
     runs-on: self-hosted
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +26,8 @@ jobs:
           node-version: "20"
 
       - name: Install deps
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           if [ -f package-lock.json ]; then
             npm ci
@@ -32,6 +36,8 @@ jobs:
           fi
 
       - name: Run tests (se tiver)
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
+        shell: bash
         run: |
           if npm run | grep -q " test"; then
             npm test
@@ -40,7 +46,9 @@ jobs:
           fi
 
       - name: Set image tags
+        # CORREÇÃO: Diz ao runner para usar o shell 'bash'
         id: vars
+        shell: bash
         run: |
           echo "IMAGE=adalbertooo/monitor" >> $GITHUB_OUTPUT
           echo "TAG_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
