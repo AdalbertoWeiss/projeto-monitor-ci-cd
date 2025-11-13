@@ -1,4 +1,3 @@
-# Caminho: .github/workflows/cd.yml
 name: CD - Deploy to Kubernetes
 
 on:
@@ -13,14 +12,14 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set vars
         id: vars
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           $TAG_SHA = ($env:GITHUB_SHA -or $env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA).Substring(0, 7)
           $NAMESPACE = $env:secrets_K8S_NAMESPACE -or "default"
@@ -31,18 +30,20 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
         with:
-          version: 'latest'
+          version: "latest"
 
       - name: Configure kubeconfig
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           $KUBE_DIR = "$HOME\.kube"
           New-Item -ItemType Directory -Force -Path $KUBE_DIR
           $KUBE_CONFIG_DATA = "${{ secrets.KUBE_CONFIG_DATA }}"
-          [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($KUBE_CONFIG_DATA)) | Out-File -FilePath "$KUBE_DIR\config"
+          [System.Text.Encoding]::UTF8.GetString(
+            [System.Convert]::FromBase64String($KUBE_CONFIG_DATA)
+          ) | Out-File -FilePath "$KUBE_DIR\config"
 
       - name: Create namespace if not exists
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} -ErrorAction SilentlyContinue
           if ($LASTEXITCODE -ne 0) {
@@ -53,7 +54,7 @@ jobs:
           }
 
       - name: Apply base manifests
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml
@@ -63,16 +64,16 @@ jobs:
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml
 
       - name: Apply app deployment
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
 
       - name: Set image to new tag
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           kubectl set image deployment/monitor monitor=${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_SHA }} -n ${{ steps.vars.outputs.NAMESPACE }}
 
       - name: Wait rollout
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           kubectl rollout status deployment/monitor -n ${{ steps.vars.outputs.NAMESPACE }} --timeout=120s
