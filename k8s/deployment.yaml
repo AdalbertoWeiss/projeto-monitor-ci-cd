@@ -1,0 +1,20 @@
+[cite_start]apiVersion: apps/v1 [cite: 21]
+[cite_start]kind: Deployment [cite: 22]
+metadata:
+  [cite_start]name: monitor [cite: 24]
+spec:
+  [cite_start]replicas: 1 [cite: 27]
+  selector:
+    matchLabels:
+      [cite_start]app: monitor [cite: 29, 30]
+  template:
+    metadata:
+      labels:
+        [cite_start]app: monitor [cite: 33, 34]
+    spec:
+      containers:
+      - [cite_start]name: monitor [cite: 37]
+        [cite_start]image: adalbertooo/monitor:latest [cite: 38]
+        [cite_start]imagePullPolicy: IfNotPresent [cite: 39]
+        ports:
+        - [cite_start]containerPort: 3000 [cite: 40]
