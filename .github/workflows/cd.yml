@@ -3,7 +3,7 @@ name: CD - Deploy to Kubernetes
 on:
   workflow_run:
     workflows: ["CI Build & Push Docker"]
-    types: [ "completed" ]
+    types: ["completed"]
 
 permissions:
   contents: read
@@ -19,7 +19,7 @@ jobs:
 
       - name: Set vars
         id: vars
-        shell: powershell -ExecutionPolicy Bypass
+        shell: pwsh
         run: |
           $TAG_SHA = ($env:GITHUB_SHA -or $env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA).Substring(0, 7)
           $NAMESPACE = $env:secrets_K8S_NAMESPACE -or "default"
@@ -33,7 +33,7 @@ jobs:
           version: "latest"
 
       - name: Configure kubeconfig
-        shell: powershell -ExecutionPolicy Bypass
+        shell: pwsh
         run: |
           $KUBE_DIR = "$HOME\.kube"
           New-Item -ItemType Directory -Force -Path $KUBE_DIR
@@ -43,7 +43,7 @@ jobs:
           ) | Out-File -FilePath "$KUBE_DIR\config"
 
       - name: Create namespace if not exists
-        shell: powershell -ExecutionPolicy Bypass
+        shell: pwsh
         run: |
           kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} -ErrorAction SilentlyContinue
           if ($LASTEXITCODE -ne 0) {
@@ -54,7 +54,7 @@ jobs:
           }
 
       - name: Apply base manifests
-        shell: powershell -ExecutionPolicy Bypass
+        shell: pwsh
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml
@@ -64,16 +64,16 @@ jobs:
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml
 
       - name: Apply app deployment
-        shell: powershell -ExecutionPolicy Bypass
+        shell: pwsh
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
 
       - name: Set image to new tag
-        shell: powershell -ExecutionPolicy Bypass
+        shell: pwsh
         run: |
           kubectl set image deployment/monitor monitor=${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_SHA }} -n ${{ steps.vars.outputs.NAMESPACE }}
 
       - name: Wait rollout
-        shell: powershell -ExecutionPolicy Bypass
+        shell: pwsh
         run: |
           kubectl rollout status deployment/monitor -n ${{ steps.vars.outputs.NAMESPACE }} --timeout=120s
