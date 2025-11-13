@@ -1,0 +1,13 @@
+{
+  "name": "monitor",
+  "version": "1.0.0",
+  "description": "App de monitoramento",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Nenhum teste definido\""
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
