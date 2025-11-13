@@ -41,18 +41,16 @@ jobs:
 
       - name: Apply base manifests (Service, Prometheus, Grafana, Nginx)
         run: |
-          # CORREÇÃO: Apontando os caminhos -f para a subpasta
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f ./projeto-monitor-ci-cd/k8s/service.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f ./projeto-monitor-ci-cd/k8s/prometheus-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f ./projeto-monitor-ci-cd/k8s/grafana-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f ./projeto-monitor-ci-cd/k8s/nginx-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f ./projeto-monitor-ci-cd/k8s/nginx-service.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f ./projeto-monitor-ci-cd/k8s/prometheus-config.yaml || true
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml || true
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml || true
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/grafana-deployment.yaml || true
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-deployment.yaml || true
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-service.yaml || true
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml || true
 
       - name: Apply app deployment (first time)
         run: |
-          # CORREÇÃO: Apontando o caminho -f para a subpasta
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f ./projeto-monitor-ci-cd/k8s/deployment.yaml
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
 
       - name: Set image to new tag
         run: |
