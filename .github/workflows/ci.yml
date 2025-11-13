@@ -25,8 +25,8 @@ jobs:
           node-version: "20"
 
       - name: Install deps
-        # CORREÇÃO: Apontando o caminho EXATO do Git Bash
-        shell: "C:\Program Files\Git\bin\bash.exe"
+        # CORREÇÃO: Usando aspas simples
+        shell: 'C:\Program Files\Git\bin\bash.exe'
         run: |
           if [ -f package-lock.json ]; then
             npm ci
@@ -35,8 +35,8 @@ jobs:
           fi
 
       - name: Run tests (se tiver)
-        # CORREÇÃO: Apontando o caminho EXATO do Git Bash
-        shell: "C:\Program Files\Git\bin\bash.exe"
+        # CORREÇÃO: Usando aspas simples
+        shell: 'C:\Program Files\Git\bin\bash.exe'
         run: |
           if npm run | grep -q " test"; then
             npm test
@@ -46,8 +46,8 @@ jobs:
 
       - name: Set image tags
         id: vars
-        # CORREÇÃO: Apontando o caminho EXATO do Git Bash
-        shell: "C:\Program Files\Git\bin\bash.exe"
+        # CORREÇÃO: Usando aspas simples
+        shell: 'C:\Program Files\Git\bin\bash.exe'
         run: |
           echo "IMAGE=adalbertooo/monitor" >> $GITHUB_OUTPUT
           echo "TAG_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
