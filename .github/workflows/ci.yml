@@ -23,15 +23,14 @@ jobs:
         with:
           node-version: "20"
 
-- name: Install deps
-  shell: powershell
-  run: |
-    if (Test-Path package-lock.json) {
-      npm ci
-    } else {
-      npm install
-    }
-
+      - name: Install deps
+        shell: powershell
+        run: |
+          if (Test-Path package-lock.json) {
+            npm ci
+          } else {
+            npm install
+          }
 
       - name: Run tests (se tiver)
         shell: powershell
