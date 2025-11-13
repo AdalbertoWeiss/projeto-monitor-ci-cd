@@ -19,12 +19,14 @@ jobs:
 
       - name: Set vars
         id: vars
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        # CORREÇÃO: Traduzido para PowerShell
+        shell: pwsh
         run: |
-          echo "IMAGE=adalbertooo/monitor" >> $GITHUB_OUTPUT
-          echo "TAG_SHA=${{ github.event.workflow_run.head_sha || github.sha }}::7" >> $GITHUB_OUTPUT
-          echo "NAMESPACE=${{ secrets.K8S_NAMESPACE || 'default'}}" >> $GITHUB_OUTPUT
+          $TAG_SHA = ($env:GITHUB_SHA -or $env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA).Substring(0, 7)
+          $NAMESPACE = $env:secrets_K8S_NAMESPACE -or "default"
+          echo "IMAGE=adalbertooo/monitor" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "TAG_SHA=$TAG_SHA" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "NAMESPACE=$NAMESPACE" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
@@ -32,44 +34,48 @@ jobs:
           version: 'latest'
 
       - name: Configure kubeconfig
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        # CORREÇÃO: Traduzido para PowerShell
+        shell: pwsh
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > $HOME/.kube/config
+          $KUBE_DIR = "$HOME\.kube"
+          New-Item -ItemType Directory -Force -Path $KUBE_DIR
+          $KUBE_CONFIG_DATA = "${{ secrets.KUBE_CONFIG_DATA }}"
+          [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($KUBE_CONFIG_DATA)) | Out-File -FilePath "$KUBE_DIR\config"
 
       - name: Create namespace if not exists
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        # CORREÇÃO: Traduzido para PowerShell (e mais robusto)
+        shell: pwsh
         run: |
-          kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} || \
-          kubectl create ns ${{ steps.vars.outputs.NAMESPACE }}
+          kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} -ErrorAction SilentlyContinue
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Namespace nao encontrado, criando..."
+            kubectl create ns ${{ steps.vars.outputs.NAMESPACE }}
+          } else {
+            Write-Host "Namespace ja existe."
+          }
 
       - name: Apply base manifests (Service, Prometheus, Grafana, Nginx)
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        # CORREÇÃO: Traduzido para PowerShell
+        shell: pwsh
         run: |
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/grafana-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-service.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml || true
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml -ErrorAction SilentlyContinue
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml -ErrorAction SilentlyContinue
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/grafana-deployment.yaml -ErrorAction SilentlyContinue
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-deployment.yaml -ErrorAction SilentlyContinue
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-service.yaml -ErrorAction SilentlyContinue
+          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml -ErrorAction SilentlyContinue
 
       - name: Apply app deployment (first time)
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        shell: pwsh
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
 
       - name: Set image to new tag
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        shell: pwsh
         run: |
           kubectl set image deployment/monitor monitor=${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_SHA }} -n ${{ steps.vars.outputs.NAMESPACE }}
 
       - name: Wait rollout
-        # CORREÇÃO: Adicionado {0} no final
-        shell: 'C:\Program Files\Git\bin\bash.exe {0}'
+        shell: pwsh
         run: |
           kubectl rollout status deployment/monitor -n ${{ steps.vars.outputs.NAMESPACE }} --timeout=120s
