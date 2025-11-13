@@ -1,3 +1,4 @@
+# Caminho: .github/workflows/ci.yml
 name: CI Build & Push Docker
 
 on:
@@ -24,6 +25,8 @@ jobs:
 
       - name: Install deps
         run: |
+          # CORREÇÃO: Entrando na subpasta antes de rodar o NPM
+          cd projeto-monitor-ci-cd
           if [ -f package-lock.json ]; then
             npm ci
           else
@@ -32,6 +35,8 @@ jobs:
 
       - name: Run tests (se tiver)
         run: |
+          # CORREÇÃO: Entrando na subpasta antes de rodar o NPM
+          cd projeto-monitor-ci-cd
           if npm run | grep -q " test"; then
             npm test
           else
@@ -59,8 +64,9 @@ jobs:
       - name: Build & Push
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./dockerfile
+          # CORREÇÃO: Apontando o 'contexto' e o 'arquivo' para a subpasta
+          context: ./projeto-monitor-ci-cd
+          file: ./projeto-monitor-ci-cd/dockerfile
           push: true
           tags: |
             ${{ steps.vars.outputs.IMAGE }}:latest
