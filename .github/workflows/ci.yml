@@ -23,17 +23,18 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install deps
-        shell: pwsh
-        run: |
-          if (Test-Path package-lock.json) {
-            npm ci
-          } else {
-            npm install
-          }
+- name: Install deps
+  shell: powershell
+  run: |
+    if (Test-Path package-lock.json) {
+      npm ci
+    } else {
+      npm install
+    }
+
 
       - name: Run tests (se tiver)
-        shell: pwsh
+        shell: powershell
         run: |
           $npmScripts = npm run
           if ($npmScripts -match "\stest\s") {
@@ -44,7 +45,7 @@ jobs:
 
       - name: Set image tags
         id: vars
-        shell: pwsh
+        shell: powershell
         run: |
           $TAG_SHA = $env:GITHUB_SHA.Substring(0, 7)
           echo "IMAGE=adalbertooo/monitor" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
