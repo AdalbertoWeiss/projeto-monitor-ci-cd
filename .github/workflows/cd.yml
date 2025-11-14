@@ -19,10 +19,20 @@ jobs:
 
       - name: Set vars
         id: vars
-        shell: pwsh
+        shell: powershell
         run: |
-          $TAG_SHA = ($env:GITHUB_SHA -or $env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA).Substring(0, 7)
-          $NAMESPACE = $env:secrets_K8S_NAMESPACE -or "default"
+          # Coleta o SHA correto (workflow_run ou push normal)
+          if ($env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA) {
+            $TAG_SHA = $env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA.Substring(0, 7)
+          } else {
+            $TAG_SHA = $env:GITHUB_SHA.Substring(0, 7)
+          }
+
+          # Namespace padrão se vazio
+          $NAMESPACE = $env:secrets_K8S_NAMESPACE
+          if (-not $NAMESPACE) { $NAMESPACE = "default" }
+
+          # Exporta variáveis para outputs
           echo "IMAGE=adalbertooo/monitor" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           echo "TAG_SHA=$TAG_SHA" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           echo "NAMESPACE=$NAMESPACE" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -33,17 +43,18 @@ jobs:
           version: "latest"
 
       - name: Configure kubeconfig
-        shell: pwsh
+        shell: powershell
         run: |
           $KUBE_DIR = "$HOME\.kube"
-          New-Item -ItemType Directory -Force -Path $KUBE_DIR
-          $KUBE_CONFIG_DATA = "${{ secrets.KUBE_CONFIG_DATA }}"
+          New-Item -ItemType Directory -Force -Path $KUBE_DIR | Out-Null
+
+          $KCFG = "${{ secrets.KUBE_CONFIG_DATA }}"
           [System.Text.Encoding]::UTF8.GetString(
-            [System.Convert]::FromBase64String($KUBE_CONFIG_DATA)
+            [System.Convert]::FromBase64String($KCFG)
           ) | Out-File -FilePath "$KUBE_DIR\config"
 
       - name: Create namespace if not exists
-        shell: pwsh
+        shell: powershell
         run: |
           kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} -ErrorAction SilentlyContinue
           if ($LASTEXITCODE -ne 0) {
@@ -54,7 +65,7 @@ jobs:
           }
 
       - name: Apply base manifests
-        shell: pwsh
+        shell: powershell
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml
@@ -64,16 +75,16 @@ jobs:
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml
 
       - name: Apply app deployment
-        shell: pwsh
+        shell: powershell
         run: |
           kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
 
       - name: Set image to new tag
-        shell: pwsh
+        shell: powershell
         run: |
           kubectl set image deployment/monitor monitor=${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_SHA }} -n ${{ steps.vars.outputs.NAMESPACE }}
 
       - name: Wait rollout
-        shell: pwsh
+        shell: powershell
         run: |
           kubectl rollout status deployment/monitor -n ${{ steps.vars.outputs.NAMESPACE }} --timeout=120s
