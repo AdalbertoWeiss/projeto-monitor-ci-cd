@@ -1,90 +1,56 @@
-name: CD - Deploy to Kubernetes
+name: CD
 
 on:
-  workflow_run:
-    workflows: ["CI Build & Push Docker"]
-    types: ["completed"]
-
-permissions:
-  contents: read
+  workflow_dispatch:
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: self-hosted
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set vars
-        id: vars
-        shell: powershell
+      - name: Configurar kubectl
+        shell: pwsh
         run: |
-          # Coleta o SHA correto (workflow_run ou push normal)
+          mkdir $HOME\.kube -Force
+          $decoded = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("${{ secrets.KUBE_CONFIG_BASE64 }}"))
+          Set-Content -Path "$HOME\.kube\config" -Value $decoded -Encoding UTF8
+
+      - name: Gerar TAG
+        shell: pwsh
+        run: |
           if ($env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA) {
-            $TAG_SHA = $env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA.Substring(0, 7)
+            $TAG_SHA = $env:GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA.Substring(0,7)
           } else {
-            $TAG_SHA = $env:GITHUB_SHA.Substring(0, 7)
+            $TAG_SHA = $env:GITHUB_SHA.Substring(0,7)
           }
+          echo "TAG_SHA=$TAG_SHA" >> $env:GITHUB_ENV
 
-          # Namespace padrão se vazio
-          $NAMESPACE = $env:secrets_K8S_NAMESPACE
-          if (-not $NAMESPACE) { $NAMESPACE = "default" }
-
-          # Exporta variáveis para outputs
-          echo "IMAGE=adalbertooo/monitor" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          echo "TAG_SHA=$TAG_SHA" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          echo "NAMESPACE=$NAMESPACE" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: "latest"
-
-      - name: Configure kubeconfig
-        shell: powershell
+      - name: Criar namespace se não existir
+        shell: pwsh
         run: |
-          $KUBE_DIR = "$HOME\.kube"
-          New-Item -ItemType Directory -Force -Path $KUBE_DIR | Out-Null
-
-          $KCFG = "${{ secrets.KUBE_CONFIG_DATA }}"
-          [System.Text.Encoding]::UTF8.GetString(
-            [System.Convert]::FromBase64String($KCFG)
-          ) | Out-File -FilePath "$KUBE_DIR\config"
-
-      - name: Create namespace if not exists
-        shell: powershell
-        run: |
-          kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} -ErrorAction SilentlyContinue
-          if ($LASTEXITCODE -ne 0) {
+          $ns = "default"
+          $exists = kubectl get ns $ns --ignore-not-found
+          if (-not $exists) {
             Write-Host "Namespace nao encontrado, criando..."
-            kubectl create ns ${{ steps.vars.outputs.NAMESPACE }}
+            kubectl create ns $ns
           } else {
-            Write-Host "Namespace ja existe."
+            Write-Host "Namespace já existe."
           }
 
-      - name: Apply base manifests
-        shell: powershell
+      - name: Aplicar deployment
+        shell: pwsh
         run: |
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/service.yaml
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-deployment.yaml
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/grafana-deployment.yaml
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-deployment.yaml
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/nginx-service.yaml
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/prometheus-config.yaml
+          kubectl apply -f k8s/deployment.yaml --namespace default
 
-      - name: Apply app deployment
-        shell: powershell
+      - name: Aplicar service
+        shell: pwsh
         run: |
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml --namespace default
 
-      - name: Set image to new tag
-        shell: powershell
+      - name: Aplicar ingress
+        shell: pwsh
         run: |
-          kubectl set image deployment/monitor monitor=${{ steps.vars.outputs.IMAGE }}:${{ steps.vars.outputs.TAG_SHA }} -n ${{ steps.vars.outputs.NAMESPACE }}
-
-      - name: Wait rollout
-        shell: powershell
-        run: |
-          kubectl rollout status deployment/monitor -n ${{ steps.vars.outputs.NAMESPACE }} --timeout=120s
+          kubectl apply -f k8s/ingress.yaml --namespace default
